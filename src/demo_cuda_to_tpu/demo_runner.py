@@ -127,7 +127,7 @@ def cleanup() -> None:
 
 def main() -> None:
     if "--version" in sys.argv:
-        print("ursa-major-demo-cuda-to-tpu v0.1.3")
+        print("ursa-major-demo-cuda-to-tpu v0.1.4")
         return
 
     if "--cleanup" in sys.argv:
@@ -246,7 +246,7 @@ def main() -> None:
 
     def run_gpu() -> None:
         # Ensure numba is installed
-        cmd = "pip3 install numba --quiet && python3 nbody_legacy.py --n 16384 --iter 10000"
+        cmd = "pip3 install numba --quiet && python3 -u nbody_legacy.py --n 16384 --iter 10000"
         for line in run_ssh_command(GPU_VM, GPU_ZONE, cmd):
             if "Iteration" in line:
                 try:
@@ -260,7 +260,7 @@ def main() -> None:
         progress.update(gpu_task, completed=10000, info="[bold green]DONE[/bold green]")
 
     def run_tpu() -> None:
-        cmd = "python3 nbody_jax.py --n 16384 --iter 10000"
+        cmd = "python3 -u nbody_jax.py --n 16384 --iter 10000"
         for line in run_ssh_command(TPU_VM, TPU_ZONE, cmd):
             if "Iteration" in line:
                 try:
@@ -284,6 +284,9 @@ def main() -> None:
             time.sleep(0.25)
 
     console.print("\n[bold green]✨ Benchmark Complete.[/bold green]")
+    
+    console.input("\n[bold red]Press Enter to DESTROY Cloud Resources...[/bold red]")
+    cleanup()
 
 if __name__ == "__main__":
     main()
