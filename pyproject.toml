@@ -1,0 +1,31 @@
+[project]
+name = "demo-cuda-to-tpu"
+version = "0.1.0"
+description = "A demo tool comparing legacy NVIDIA CUDA code against modern Google TPU JAX code."
+authors = [{ name = "Chuck Forsyth", email = "forsythc@ucr.edu" }]
+requires-python = ">=3.9"
+dependencies = [
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+demo-runner = "demo_cuda_to_tpu.demo_runner:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pytest>=7.0.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.mypy]
+strict = true
+exclude = ["src/demo_cuda_to_tpu/payloads/"]
