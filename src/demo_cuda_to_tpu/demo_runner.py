@@ -63,10 +63,15 @@ def run_local_command(cmd: str) -> None:
     """Runs a local command and prints output."""
 
 
-def run_ssh_command(vm: str, zone: str, command: str) -> Generator[str, None, None]:
+def run_ssh_command(vm: str, zone: str, command: str, is_tpu: bool = False) -> Generator[str, None, None]:
     """Executes SSH command and yields output line by line."""
-    full_cmd = [
-        "gcloud", "compute", "ssh", vm,
+    if is_tpu:
+        base_cmd = ["gcloud", "compute", "tpus", "tpu-vm", "ssh"]
+    else:
+        base_cmd = ["gcloud", "compute", "ssh"]
+
+    full_cmd = base_cmd + [
+        vm,
         f"--project={PROJECT}",
         f"--zone={zone}",
         "--quiet",
@@ -127,7 +132,7 @@ def cleanup() -> None:
 
 def main() -> None:
     if "--version" in sys.argv:
-        print("ursa-major-demo-cuda-to-tpu v0.1.4")
+        print("ursa-major-demo-cuda-to-tpu v0.1.5")
         return
 
     if "--cleanup" in sys.argv:
@@ -261,7 +266,7 @@ def main() -> None:
 
     def run_tpu() -> None:
         cmd = "python3 -u nbody_jax.py --n 16384 --iter 10000"
-        for line in run_ssh_command(TPU_VM, TPU_ZONE, cmd):
+        for line in run_ssh_command(TPU_VM, TPU_ZONE, cmd, is_tpu=True):
             if "Iteration" in line:
                 try:
                     match = re.search(r"Iteration (\d+)", line)
