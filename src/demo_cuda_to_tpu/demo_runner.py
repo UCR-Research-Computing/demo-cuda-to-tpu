@@ -102,7 +102,7 @@ def create_dashboard(gpu_status: str, tpu_status: str, progress_group: Progress)
 
 def main() -> None:
     if "--version" in sys.argv:
-        print("ursa-major-demo-cuda-to-tpu v0.1.1")
+        print("ursa-major-demo-cuda-to-tpu v0.1.2")
         return
 
     header("🚀 CUDA to TPU: The Accelerator Race")
