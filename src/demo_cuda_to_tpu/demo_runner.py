@@ -5,7 +5,7 @@ import re
 import threading
 import sys
 from pathlib import Path
-from typing import Generator, Optional, Any
+from typing import Generator, Optional
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -100,9 +100,38 @@ def create_dashboard(gpu_status: str, tpu_status: str, progress_group: Progress)
     
     return container
 
+def cleanup() -> None:
+    header("🧹 Cleaning Up Resources")
+    console.print("[bold yellow]Destroying Infrastructure...[/bold yellow]")
+    
+    gpu_cmd = f"gcloud compute instances delete {GPU_VM} --project={PROJECT} --zone={GPU_ZONE} --quiet"
+    tpu_cmd = f"gcloud compute tpus tpu-vm delete {TPU_VM} --project={PROJECT} --zone={TPU_ZONE} --quiet"
+    
+    def nuke_gpu() -> None:
+        console.print(f"Deleting {GPU_VM}...")
+        subprocess.run(gpu_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        console.print(f"[bold red]Deleted[/bold red] {GPU_VM}")
+
+    def nuke_tpu() -> None:
+        console.print(f"Deleting {TPU_VM}...")
+        subprocess.run(tpu_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        console.print(f"[bold red]Deleted[/bold red] {TPU_VM}")
+
+    t1 = threading.Thread(target=nuke_gpu)
+    t2 = threading.Thread(target=nuke_tpu)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+    console.print("\n[bold green]✨ Cleanup Complete.[/bold green]")
+
 def main() -> None:
     if "--version" in sys.argv:
         print("ursa-major-demo-cuda-to-tpu v0.1.3")
+        return
+
+    if "--cleanup" in sys.argv:
+        cleanup()
         return
 
     header("🚀 CUDA to TPU: The Accelerator Race")
@@ -199,7 +228,7 @@ def main() -> None:
              console.print(f"[bold red]Error:[/bold red] Failed to SCP payload to {GPU_VM}.")
              return
 
-        res_tpu = subprocess.run(f"gcloud compute scp {JAX_PAYLOAD} {TPU_VM}:~/ --project={PROJECT} --zone={TPU_ZONE} --quiet", shell=True)
+        res_tpu = subprocess.run(f"gcloud compute tpus tpu-vm scp {JAX_PAYLOAD} {TPU_VM}:~/ --project={PROJECT} --zone={TPU_ZONE} --quiet", shell=True)
         if res_tpu.returncode != 0:
              console.print(f"[bold red]Error:[/bold red] Failed to SCP payload to {TPU_VM}.")
              return
