@@ -3,8 +3,9 @@ import subprocess
 import time
 import re
 import threading
+import sys
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Generator, Optional, Any
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -100,6 +101,10 @@ def create_dashboard(gpu_status: str, tpu_status: str, progress_group: Progress)
     return container
 
 def main() -> None:
+    if "--version" in sys.argv:
+        print("ursa-major-demo-cuda-to-tpu v0.1.1")
+        return
+
     header("🚀 CUDA to TPU: The Accelerator Race")
 
     # --- SCENE 1: The Context ---
