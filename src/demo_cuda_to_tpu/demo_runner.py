@@ -102,7 +102,7 @@ def create_dashboard(gpu_status: str, tpu_status: str, progress_group: Progress)
 
 def main() -> None:
     if "--version" in sys.argv:
-        print("ursa-major-demo-cuda-to-tpu v0.1.2")
+        print("ursa-major-demo-cuda-to-tpu v0.1.3")
         return
 
     header("🚀 CUDA to TPU: The Accelerator Race")
@@ -151,7 +151,10 @@ def main() -> None:
         check = subprocess.run(f"gcloud compute instances describe {GPU_VM} --project={PROJECT} --zone={GPU_ZONE}", shell=True, capture_output=True)
         if check.returncode != 0:
             provisioning_progress.update(gpu_p_task, status="Creating...")
-            subprocess.run(gpu_create_cmd, shell=True, capture_output=True)
+            res = subprocess.run(gpu_create_cmd, shell=True, capture_output=True)
+            if res.returncode != 0:
+                provisioning_progress.update(gpu_p_task, completed=100, status="[bold red]FAILED[/bold red]")
+                return
         provisioning_progress.update(gpu_p_task, completed=100, status="[bold green]ONLINE[/bold green]")
 
     def do_tpu() -> None:
@@ -159,7 +162,10 @@ def main() -> None:
         check = subprocess.run(f"gcloud compute tpus tpu-vm describe {TPU_VM} --project={PROJECT} --zone={TPU_ZONE}", shell=True, capture_output=True)
         if check.returncode != 0:
             provisioning_progress.update(tpu_p_task, status="Creating...")
-            subprocess.run(tpu_create_cmd, shell=True, capture_output=True)
+            res = subprocess.run(tpu_create_cmd, shell=True, capture_output=True)
+            if res.returncode != 0:
+                provisioning_progress.update(tpu_p_task, completed=100, status="[bold red]FAILED[/bold red]")
+                return
         provisioning_progress.update(tpu_p_task, completed=100, status="[bold green]ONLINE[/bold green]")
 
     t_gpu = threading.Thread(target=do_gpu)
@@ -173,10 +179,10 @@ def main() -> None:
 
     with console.status("[bold yellow]Waiting for SSH connectivity (Booting)..."):
         if not wait_for_ssh(GPU_VM, GPU_ZONE, is_tpu=False):
-            console.print(f"[bold red]Error:[/bold red] {GPU_VM} failed to boot.")
+            console.print(f"[bold red]Error:[/bold red] {GPU_VM} failed to boot or is unreachable.")
             return
         if not wait_for_ssh(TPU_VM, TPU_ZONE, is_tpu=True):
-            console.print(f"[bold red]Error:[/bold red] {TPU_VM} failed to boot.")
+            console.print(f"[bold red]Error:[/bold red] {TPU_VM} failed to boot or is unreachable.")
             return
 
     console.print("\n[bold green]✅ Infrastructure is Ready & SSH Reachable.[/bold green]")
@@ -188,8 +194,16 @@ def main() -> None:
             console.print(f"[bold red]Error: Payload files not found at {PAYLOAD_DIR}[/bold red]")
             return
 
-        subprocess.run(f"gcloud compute scp {LEGACY_PAYLOAD} {GPU_VM}:~/ --project={PROJECT} --zone={GPU_ZONE} --quiet", shell=True)
-        subprocess.run(f"gcloud compute scp {JAX_PAYLOAD} {TPU_VM}:~/ --project={PROJECT} --zone={TPU_ZONE} --quiet", shell=True)
+        res_gpu = subprocess.run(f"gcloud compute scp {LEGACY_PAYLOAD} {GPU_VM}:~/ --project={PROJECT} --zone={GPU_ZONE} --quiet", shell=True)
+        if res_gpu.returncode != 0:
+             console.print(f"[bold red]Error:[/bold red] Failed to SCP payload to {GPU_VM}.")
+             return
+
+        res_tpu = subprocess.run(f"gcloud compute scp {JAX_PAYLOAD} {TPU_VM}:~/ --project={PROJECT} --zone={TPU_ZONE} --quiet", shell=True)
+        if res_tpu.returncode != 0:
+             console.print(f"[bold red]Error:[/bold red] Failed to SCP payload to {TPU_VM}.")
+             return
+
     console.print("[green]✅ Codebase Deployed to Cloud Layers.[/green]")
     console.input("\n[dim]Press Enter to START THE RACE...[/dim]")
 
