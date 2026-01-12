@@ -9,7 +9,7 @@ dependencies = [
 ]
 
 [project.scripts]
-demo-runner = "demo_cuda_to_tpu.demo_runner:main"
+ursa-major-demo-cuda-to-tpu = "demo_cuda_to_tpu.demo_runner:main"
 
 [build-system]
 requires = ["hatchling"]
