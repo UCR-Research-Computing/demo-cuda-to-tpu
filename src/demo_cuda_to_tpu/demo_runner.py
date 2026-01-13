@@ -131,7 +131,7 @@ def cleanup() -> None:
     console.print("\n[bold green]✨ Cleanup Complete.[/bold green]")
 
 def main() -> None:
-    print("ursa-major-demo-cuda-to-tpu v0.1.6")
+    print("ursa-major-demo-cuda-to-tpu v0.1.7")
     if "--version" in sys.argv:
         return
 
@@ -141,22 +141,37 @@ def main() -> None:
 
     header("🚀 CUDA to TPU: The Accelerator Race")
 
-    # --- SCENE 1: The Context ---
+    # --- SCENE 1: The Context & Conversion ---
     step("Context: The 'Handwritten Kernel' Problem", 
     """
     We start with a Python script ([cyan]nbody_legacy.py[/cyan]) using [bold red]Numba CUDA[/bold red].
-    It's performant but hardware-locked.
+    It requires explicit thread management and is locked to NVIDIA hardware.
     """)
+    
+    # Read payloads for display
+    try:
+        legacy_code = LEGACY_PAYLOAD.read_text()
+        jax_code = JAX_PAYLOAD.read_text()
+    except Exception as e:
+        console.print(f"[bold red]Error reading payloads: {e}[/bold red]")
+        return
+
+    # Show Legacy Code
+    console.print(Panel(Syntax(legacy_code, "python", theme="monokai", line_numbers=True, start_line=1), title="📄 nbody_legacy.py (CUDA)", height=20))
+    console.input("\n[dim]Press Enter to trigger Gemini Refactoring...[/dim]")
 
     # Simulate AI Analysis
-    with console.status("[bold magenta]Gemini is analyzing the codebase..."):
-        time.sleep(2.5)  # Dramatic pause
-    console.print("[bold magenta]✨ Analysis Complete: Identified Parallelizable Kernels.[/bold magenta]")
+    with console.status("[bold magenta]Gemini is analyzing and refactoring to JAX...[/bold magenta]"):
+        time.sleep(3.0) 
 
-    step("The AI Solution", 
+    # Show JAX Code
+    console.print("\n[bold magenta]✨ Refactoring Complete![/bold magenta]")
+    console.print(Panel(Syntax(jax_code, "python", theme="monokai", line_numbers=True, start_line=1), title="✨ nbody_jax.py (JAX/TPU)", height=20))
+    
+    step("The Result", 
     """
-    Gemini CLI refactored the CUDA logic into high-level [bold blue]JAX[/bold blue].
-    We now have [cyan]nbody_jax.py[/cyan] ready for TPU execution.
+    The complex CUDA kernel has been transformed into high-level, hardware-agnostic JAX code.
+    This new code can run on CPU, GPU, and TPU without modification.
     """)
 
     # --- SCENE 2: Concurrent Provisioning ---
