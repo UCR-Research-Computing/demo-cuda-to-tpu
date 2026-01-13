@@ -145,7 +145,7 @@ def cleanup() -> None:
     console.print("\n[bold green]✨ Cleanup Complete.[/bold green]")
 
 def run() -> None:
-    print("ursa-major-demo-cuda-to-tpu v0.1.12")
+    print("ursa-major-demo-cuda-to-tpu v0.1.13")
     if "--version" in sys.argv:
         return
 
@@ -213,14 +213,18 @@ def run() -> None:
 
     def run_with_retry(cmd: str, task_id: Any, task_name: str) -> bool:
         max_retries = 3
+        last_error = ""
         for attempt in range(1, max_retries + 1):
             if attempt > 1:
                 provisioning_progress.update(task_id, status=f"Retrying ({attempt}/{max_retries})...")
                 time.sleep(5)
             
-            res = subprocess.run(cmd, shell=True, capture_output=True)
+            res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             if res.returncode == 0:
                 return True
+            last_error = res.stderr
+        
+        console.print(f"\n[bold red]Error provisioning {task_name}:[/bold red]\n{last_error.strip()}")
         return False
 
     def do_gpu() -> None:
