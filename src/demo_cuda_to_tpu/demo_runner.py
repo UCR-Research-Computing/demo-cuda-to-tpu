@@ -139,7 +139,7 @@ def cleanup() -> None:
     console.print("\n[bold green]✨ Cleanup Complete.[/bold green]")
 
 def run() -> None:
-    print("ursa-major-demo-cuda-to-tpu v0.3.7")
+    print("ursa-major-demo-cuda-to-tpu v0.3.8")
     if "--version" in sys.argv:
         return
 
