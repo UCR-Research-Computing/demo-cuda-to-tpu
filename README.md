@@ -20,7 +20,14 @@ You can install and run this tool directly from your local machine (Linux/Mac) o
 ### Prerequisites
 *   **Google Cloud SDK (`gcloud`)** installed and authenticated.
 *   **Python 3.10+**
-*   **`uv`** (Universal Python Package Manager) recommended.
+
+### Installing `uv`
+
+If you don't have `uv` installed:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 ### Installation
 
