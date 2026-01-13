@@ -109,29 +109,43 @@ def cleanup() -> None:
     header("🧹 Cleaning Up Resources")
     console.print("[bold yellow]Destroying Infrastructure...[/bold yellow]")
     
-    gpu_cmd = f"gcloud compute instances delete {GPU_VM} --project={PROJECT} --zone={GPU_ZONE} --quiet"
-    tpu_cmd = f"gcloud compute tpus tpu-vm delete {TPU_VM} --project={PROJECT} --zone={TPU_ZONE} --quiet"
-    
     def nuke_gpu() -> None:
+        check = subprocess.run(f"gcloud compute instances describe {GPU_VM} --project={PROJECT} --zone={GPU_ZONE}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if check.returncode != 0:
+            console.print(f"[dim]{GPU_VM} not found, skipping.[/dim]")
+            return
+
         console.print(f"Deleting {GPU_VM}...")
-        subprocess.run(gpu_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(f"gcloud compute instances delete {GPU_VM} --project={PROJECT} --zone={GPU_ZONE} --quiet", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         console.print(f"[bold red]Deleted[/bold red] {GPU_VM}")
 
     def nuke_tpu() -> None:
+        check = subprocess.run(f"gcloud compute tpus tpu-vm describe {TPU_VM} --project={PROJECT} --zone={TPU_ZONE}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if check.returncode != 0:
+            console.print(f"[dim]{TPU_VM} not found, skipping.[/dim]")
+            return
+
         console.print(f"Deleting {TPU_VM}...")
-        subprocess.run(tpu_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(f"gcloud compute tpus tpu-vm delete {TPU_VM} --project={PROJECT} --zone={TPU_ZONE} --quiet", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         console.print(f"[bold red]Deleted[/bold red] {TPU_VM}")
 
     t1 = threading.Thread(target=nuke_gpu)
     t2 = threading.Thread(target=nuke_tpu)
     t1.start()
     t2.start()
-    t1.join()
-    t2.join()
+    
+    try:
+        t1.join()
+        t2.join()
+    except KeyboardInterrupt:
+        console.print("\n[bold red]Cleanup Interrupted! Resources may still exist.[/bold red]")
+        # We cannot easily kill threads in Python, so we just exit.
+        sys.exit(1)
+        
     console.print("\n[bold green]✨ Cleanup Complete.[/bold green]")
 
 def run() -> None:
-    print("ursa-major-demo-cuda-to-tpu v0.1.11")
+    print("ursa-major-demo-cuda-to-tpu v0.1.12")
     if "--version" in sys.argv:
         return
 
