@@ -3,6 +3,7 @@
 
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/UCR-Research-Computing/demo-cuda-to-tpu/blob/master/colab.ipynb)
 
 **Ursa Major** is a live, interactive CLI demonstration that races a legacy **NVIDIA A100 GPU** against a modern **Google TPU v5e**. 
 
