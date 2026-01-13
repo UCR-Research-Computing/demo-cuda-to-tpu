@@ -1,16 +1,16 @@
-# 🚀 Ursa Major: The Accelerator Race
-### CUDA to TPU Migration Demo
+# 🚀 Accelerator Comparison: CUDA vs TPU
+### Legacy to Modern Migration Demo
 
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/UCR-Research-Computing/demo-cuda-to-tpu/blob/master/colab.ipynb)
 
-**Ursa Major** is a live, interactive CLI demonstration that races a legacy **NVIDIA A100 GPU** against a modern **Google TPU v5e**. 
+**Accelerator Comparison** is a live, interactive CLI demonstration that compares a legacy **NVIDIA A100 GPU** workload against a modern **Google TPU v5e** implementation. 
 
 It simulates a real-world Research Computing workflow:
 1.  **Legacy Code**: Taking an existing PyTorch/CUDA training loop (ResNet-50).
 2.  **AI Refactoring**: Automatically converting it to a hardware-agnostic JAX/Flax model.
-3.  **The Race**: Provisioning both accelerators simultaneously and racing them to convergence.
+3.  **The Comparison**: Provisioning both accelerators simultaneously and running them to convergence.
 
 ---
 
@@ -39,7 +39,7 @@ uv tool install git+https://github.com/ucr-research-computing/demo-cuda-to-tpu
 ### Run the Demo
 
 ```bash
-ursa-major-demo-cuda-to-tpu
+demo-cuda-to-tpu
 ```
 
 ### 🔄 Updating
@@ -82,11 +82,11 @@ This benchmark trains a **ResNet-50** architecture on synthetic ImageNet data (2
 | **Framework** | PyTorch (Eager) | JAX / Flax (XLA Compiled) |
 | **Precision** | FP32 / AMP | bfloat16 (Native) |
 | **Optimization** | Manual CUDA/cuDNN | XLA Compiler |
-| **Throughput** | High | **Massive** |
+| **Throughput** | Baseline | **Optimized** |
 
 ## ☁️ Running in Google Colab
 
-You can run this orchestrator from a Google Colab notebook to visualize the race without installing anything locally.
+You can run this orchestrator from a Google Colab notebook to visualize the comparison without installing anything locally.
 
 1.  Open a new Colab Notebook.
 2.  Install the tool and authenticate:
@@ -104,8 +104,8 @@ auth.authenticate_user()
 !gcloud config set project ucr-research-computing
 !gcloud config set compute/zone us-central1-a
 
-# 4. Run the Race!
-!/root/.local/bin/ursa-major-demo-cuda-to-tpu
+# 4. Run the Comparison!
+!/root/.local/bin/demo-cuda-to-tpu
 ```
 
 ## 🧹 Cleanup
@@ -113,7 +113,7 @@ auth.authenticate_user()
 The tool attempts to auto-cleanup at the end of the run. If you interrupted it or something broke, run:
 
 ```bash
-ursa-major-demo-cuda-to-tpu --cleanup
+demo-cuda-to-tpu --cleanup
 ```
 
 ---

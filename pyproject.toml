@@ -1,6 +1,6 @@
 [project]
 name = "demo-cuda-to-tpu"
-version = "0.3.8"
+version = "0.4.0"
 description = "A demo tool comparing legacy NVIDIA CUDA code against modern Google TPU JAX code."
 authors = [{ name = "Chuck Forsyth", email = "forsythc@ucr.edu" }]
 requires-python = ">=3.9"
@@ -9,14 +9,14 @@ dependencies = [
 ]
 
 [project.scripts]
-ursa-major-demo-cuda-to-tpu = "demo_cuda_to_tpu.demo_runner:main"
+demo-cuda-to-tpu = "demo_cuda_to_tpu.demo_runner:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
     "pytest>=7.0.0",
