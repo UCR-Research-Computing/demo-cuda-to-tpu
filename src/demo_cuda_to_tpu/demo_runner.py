@@ -25,8 +25,8 @@ TPU_ZONE = "us-west1-c"
 # Locate Payloads
 BASE_DIR = Path(__file__).parent
 PAYLOAD_DIR = BASE_DIR / "payloads"
-LEGACY_PAYLOAD = PAYLOAD_DIR / "nbody_legacy.py"
-JAX_PAYLOAD = PAYLOAD_DIR / "nbody_jax.py"
+LEGACY_PAYLOAD = PAYLOAD_DIR / "train_legacy.py"
+JAX_PAYLOAD = PAYLOAD_DIR / "train_jax.py"
 
 def header(title: str) -> None:
     console.clear()
@@ -39,7 +39,6 @@ def step(title: str, description: str, command_preview: Optional[str] = None) ->
         console.print("\n[bold dim]Command to be executed:[/bold dim]")
         syntax = Syntax(command_preview, "bash", theme="monokai", line_numbers=False)
         console.print(syntax)
-    
     
     console.input("\n[dim]Press Enter to execute...[/dim]")
 
@@ -58,10 +57,6 @@ def wait_for_ssh(vm: str, zone: str, is_tpu: bool = False) -> bool:
         time.sleep(5)
         attempts += 1
     return False
-
-def run_local_command(cmd: str) -> None:
-    """Runs a local command and prints output."""
-
 
 def run_ssh_command(vm: str, zone: str, command: str, is_tpu: bool = False) -> Generator[str, None, None]:
     """Executes SSH command and yields output line by line."""
@@ -139,13 +134,12 @@ def cleanup() -> None:
         t2.join()
     except KeyboardInterrupt:
         console.print("\n[bold red]Cleanup Interrupted! Resources may still exist.[/bold red]")
-        # We cannot easily kill threads in Python, so we just exit.
         sys.exit(1)
         
     console.print("\n[bold green]✨ Cleanup Complete.[/bold green]")
 
 def run() -> None:
-    print("ursa-major-demo-cuda-to-tpu v0.1.13")
+    print("ursa-major-demo-cuda-to-tpu v0.2.0")
     if "--version" in sys.argv:
         return
 
@@ -156,10 +150,10 @@ def run() -> None:
     header("🚀 CUDA to TPU: The Accelerator Race")
 
     # --- SCENE 1: The Context & Conversion ---
-    step("Context: The 'Handwritten Kernel' Problem", 
+    step("Context: The 'Legacy' Training Loop", 
     """
-    We start with a Python script ([cyan]nbody_legacy.py[/cyan]) using [bold red]Numba CUDA[/bold red].
-    It requires explicit thread management and is locked to NVIDIA hardware.
+    We start with a standard [bold red]PyTorch[/bold red] training script ([cyan]train_legacy.py[/cyan]).
+    It trains a CNN on MNIST using explicit CUDA device management.
     """)
     
     # Read payloads for display
@@ -171,21 +165,21 @@ def run() -> None:
         return
 
     # Show Legacy Code
-    console.print(Panel(Syntax(legacy_code, "python", theme="monokai", line_numbers=True, start_line=1), title="📄 nbody_legacy.py (CUDA)", height=20))
+    console.print(Panel(Syntax(legacy_code, "python", theme="monokai", line_numbers=True, start_line=1), title="📄 train_legacy.py (PyTorch/CUDA)", height=20))
     console.input("\n[dim]Press Enter to trigger Gemini Refactoring...[/dim]")
 
     # Simulate AI Analysis
-    with console.status("[bold magenta]Gemini is analyzing and refactoring to JAX...[/bold magenta]"):
+    with console.status("[bold magenta]Gemini is refactoring PyTorch to JAX/Flax...[/bold magenta]"):
         time.sleep(3.0) 
 
     # Show JAX Code
     console.print("\n[bold magenta]✨ Refactoring Complete![/bold magenta]")
-    console.print(Panel(Syntax(jax_code, "python", theme="monokai", line_numbers=True, start_line=1), title="✨ nbody_jax.py (JAX/TPU)", height=20))
+    console.print(Panel(Syntax(jax_code, "python", theme="monokai", line_numbers=True, start_line=1), title="✨ train_jax.py (Flax/TPU)", height=20))
     
     step("The Result", 
     """
-    The complex CUDA kernel has been transformed into high-level, hardware-agnostic JAX code.
-    This new code can run on CPU, GPU, and TPU without modification.
+    The PyTorch code has been transformed into a [bold blue]JAX/Flax[/bold blue] training loop.
+    This enables XLA compilation and native TPU execution with massive throughput.
     """)
 
     # --- SCENE 2: Concurrent Provisioning ---
@@ -195,8 +189,6 @@ def run() -> None:
     step("Provisioning the Iron", 
     """
     Simultaneously summoning [bold green]Nvidia A100[/bold green] and [bold blue]Google TPU v5e[/bold blue]...
-    
-    This demonstrates the power of the 'Execution Engine' to orchestrate multiple architectures at once.
     """, command_preview=f"{gpu_create_cmd}\n{tpu_create_cmd}")
 
     provisioning_progress = Progress(
@@ -297,42 +289,43 @@ def run() -> None:
     console.input("\n[dim]Press Enter to START THE RACE...[/dim]")
 
     # --- SCENE 4: The Race ---
-    header("🏁 The Benchmark: Legacy CUDA vs Pure JAX/TPU")
+    header("🏁 The Benchmark: PyTorch (A100) vs JAX (TPU v5e)")
     gpu_log: list[str] = []
     tpu_log: list[str] = []
     progress = Progress(SpinnerColumn(), "[progress.description]{task.description}", BarColumn(), "[progress.percentage]{task.percentage:>3.0f}%", TextColumn("{task.fields[info]}"))
-    gpu_task = progress.add_task("[green]Legacy CUDA Simulation", total=10000, info="Initializing...")
-    tpu_task = progress.add_task("[blue]Pure JAX Simulation", total=10000, info="Initializing...")
+    gpu_task = progress.add_task("[green]PyTorch Training", total=5, info="Initializing...")
+    tpu_task = progress.add_task("[blue]JAX/Flax Training", total=5, info="Initializing...")
 
     def run_gpu() -> None:
-        # Ensure numba is installed
-        cmd = "pip3 install numba --quiet && python3 -u nbody_legacy.py --n 16384 --iter 10000"
+        # Pre-installed on image: torch torchvision
+        cmd = "python3 -u train_legacy.py"
         for line in run_ssh_command(GPU_VM, GPU_ZONE, cmd):
-            if "Iteration" in line:
+            if "Epoch" in line:
                 try:
-                    match = re.search(r"Iteration (\d+)", line)
+                    # Line format: Epoch 1/5 | Loss: ...
+                    match = re.search(r"Epoch (\d+)/(\d+)", line)
                     if match:
-                        it = int(match.group(1))
-                        progress.update(gpu_task, completed=it, info=f"Step {it}")
+                        epoch = int(match.group(1))
+                        progress.update(gpu_task, completed=epoch, info=f"Epoch {epoch}/5")
                 except Exception:
                     pass
             gpu_log.append(line)
-        progress.update(gpu_task, completed=10000, info="[bold green]DONE[/bold green]")
+        progress.update(gpu_task, completed=5, info="[bold green]DONE[/bold green]")
 
     def run_tpu() -> None:
-        # Ensure JAX is installed for TPU
-        cmd = "pip3 install 'jax[tpu]' -f https://storage.googleapis.com/jax-releases/libtpu_releases.html --quiet && python3 -u nbody_jax.py --n 16384 --iter 10000"
+        # Install JAX and Flax
+        cmd = "pip3 install 'jax[tpu]' -f https://storage.googleapis.com/jax-releases/libtpu_releases.html flax optax --quiet && python3 -u train_jax.py"
         for line in run_ssh_command(TPU_VM, TPU_ZONE, cmd, is_tpu=True):
-            if "Iteration" in line:
+            if "Epoch" in line:
                 try:
-                    match = re.search(r"Iteration (\d+)", line)
+                    match = re.search(r"Epoch (\d+)/(\d+)", line)
                     if match:
-                        it = int(match.group(1))
-                        progress.update(tpu_task, completed=it, info=f"Step {it}")
+                        epoch = int(match.group(1))
+                        progress.update(tpu_task, completed=epoch, info=f"Epoch {epoch}/5")
                 except Exception:
                     pass
             tpu_log.append(line)
-        progress.update(tpu_task, completed=10000, info="[bold blue]DONE[/bold blue]")
+        progress.update(tpu_task, completed=5, info="[bold blue]DONE[/bold blue]")
 
 
     t1, t2 = threading.Thread(target=run_gpu), threading.Thread(target=run_tpu)
