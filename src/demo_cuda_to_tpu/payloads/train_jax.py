@@ -4,6 +4,7 @@ import jax.numpy as jnp
 from flax import linen as nn
 from flax.training import train_state
 import optax
+from typing import Any
 
 print(f"JAX Devices: {jax.devices()}")
 
@@ -60,25 +61,41 @@ class ResNet50(nn.Module):
         x = nn.Dense(1000)(x)
         return x
 
+class TrainState(train_state.TrainState):
+    batch_stats: Any
+
 def create_train_state(rng, input_shape, learning_rate):
     model = ResNet50()
-    params = model.init(rng, jnp.ones(input_shape))['params']
+    variables = model.init(rng, jnp.ones(input_shape))
+    params = variables['params']
+    batch_stats = variables['batch_stats']
+    
     tx = optax.sgd(learning_rate, momentum=0.9)
-    return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
+    return TrainState.create(
+        apply_fn=model.apply,
+        params=params,
+        tx=tx,
+        batch_stats=batch_stats
+    )
 
 @jax.jit
 def train_step(state, batch):
     images, labels = batch
     def loss_fn(params):
-        logits = state.apply_fn({'params': params}, images)
+        logits, new_model_state = state.apply_fn(
+            {'params': params, 'batch_stats': state.batch_stats},
+            images,
+            mutable=['batch_stats']
+        )
         one_hot = jax.nn.one_hot(labels, 1000)
         loss = optax.softmax_cross_entropy(logits=logits, labels=one_hot).mean()
-        return loss
+        return loss, new_model_state
     
-    grad_fn = jax.value_and_grad(loss_fn)
-    loss, grads = grad_fn(state.params)
+    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
+    (loss, new_model_state), grads = grad_fn(state.params)
+    
     state = state.apply_gradients(grads=grads)
-    return state, loss
+    return state.replace(batch_stats=new_model_state['batch_stats']), loss
 
 def main():
     # Hyperparameters
