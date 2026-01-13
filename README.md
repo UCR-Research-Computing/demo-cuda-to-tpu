@@ -25,13 +25,21 @@ You can install and run this tool directly from your local machine (Linux/Mac) o
 ### Installation
 
 ```bash
-uv tool install git+https://github.com/ucr-research-computing/demo-cuda-to-tpu --force
+uv tool install git+https://github.com/ucr-research-computing/demo-cuda-to-tpu
 ```
 
 ### Run the Demo
 
 ```bash
 ursa-major-demo-cuda-to-tpu
+```
+
+### 🔄 Updating
+
+To get the latest version of the demo:
+
+```bash
+uv tool upgrade demo-cuda-to-tpu
 ```
 
 ---
