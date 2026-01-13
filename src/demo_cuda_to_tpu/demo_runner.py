@@ -131,7 +131,7 @@ def cleanup() -> None:
     console.print("\n[bold green]✨ Cleanup Complete.[/bold green]")
 
 def main() -> None:
-    print("ursa-major-demo-cuda-to-tpu v0.1.8")
+    print("ursa-major-demo-cuda-to-tpu v0.1.9")
     if "--version" in sys.argv:
         return
 
@@ -310,4 +310,9 @@ def main() -> None:
     cleanup()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        console.print("\n[bold red]Interrupted by User.[/bold red]")
+        cleanup()
+        sys.exit(1)
