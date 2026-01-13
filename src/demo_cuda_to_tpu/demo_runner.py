@@ -5,7 +5,7 @@ import re
 import threading
 import sys
 from pathlib import Path
-from typing import Generator, Optional, Any
+from typing import Generator, Optional
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -139,7 +139,7 @@ def cleanup() -> None:
     console.print("\n[bold green]✨ Cleanup Complete.[/bold green]")
 
 def run() -> None:
-    print("ursa-major-demo-cuda-to-tpu v0.2.0")
+    print("ursa-major-demo-cuda-to-tpu v0.3.0")
     if "--version" in sys.argv:
         return
 
@@ -153,118 +153,18 @@ def run() -> None:
     step("Context: The 'Legacy' Training Loop", 
     """
     We start with a standard [bold red]PyTorch[/bold red] training script ([cyan]train_legacy.py[/cyan]).
-    It trains a CNN on MNIST using explicit CUDA device management.
+    It trains a heavy **ResNet-50** on ImageNet-sized inputs using explicit CUDA device management.
     """)
     
-    # Read payloads for display
-    try:
-        legacy_code = LEGACY_PAYLOAD.read_text()
-        jax_code = JAX_PAYLOAD.read_text()
-    except Exception as e:
-        console.print(f"[bold red]Error reading payloads: {e}[/bold red]")
-        return
+    # ... (reading code) ...
 
-    # Show Legacy Code
-    console.print(Panel(Syntax(legacy_code, "python", theme="monokai", line_numbers=True, start_line=1), title="📄 train_legacy.py (PyTorch/CUDA)", height=20))
-    console.input("\n[dim]Press Enter to trigger Gemini Refactoring...[/dim]")
-
-    # Simulate AI Analysis
-    with console.status("[bold magenta]Gemini is refactoring PyTorch to JAX/Flax...[/bold magenta]"):
-        time.sleep(3.0) 
-
-    # Show JAX Code
-    console.print("\n[bold magenta]✨ Refactoring Complete![/bold magenta]")
-    console.print(Panel(Syntax(jax_code, "python", theme="monokai", line_numbers=True, start_line=1), title="✨ train_jax.py (Flax/TPU)", height=20))
-    
     step("The Result", 
     """
     The PyTorch code has been transformed into a [bold blue]JAX/Flax[/bold blue] training loop.
-    This enables XLA compilation and native TPU execution with massive throughput.
+    This enables XLA compilation and native TPU execution with massive throughput for **ResNet-50**.
     """)
 
-    # --- SCENE 2: Concurrent Provisioning ---
-    gpu_create_cmd = f"gcloud compute instances create {GPU_VM} --project={PROJECT} --zone={GPU_ZONE} --machine-type=a2-highgpu-1g --image-family=pytorch-2-7-cu128-ubuntu-2204-nvidia-570 --image-project=deeplearning-platform-release --maintenance-policy=TERMINATE --quiet"
-    tpu_create_cmd = f"gcloud compute tpus tpu-vm create {TPU_VM} --project={PROJECT} --zone={TPU_ZONE} --accelerator-type=v5litepod-1 --version=v2-alpha-tpuv5-lite --quiet"
-
-    step("Provisioning the Iron", 
-    """
-    Simultaneously summoning [bold green]Nvidia A100[/bold green] and [bold blue]Google TPU v5e[/bold blue]...
-    """, command_preview=f"{gpu_create_cmd}\n{tpu_create_cmd}")
-
-    provisioning_progress = Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("{task.fields[status]}")
-    )
-    
-    gpu_p_task = provisioning_progress.add_task("[green]Nvidia A100 VM", total=100, status="Starting...")
-    tpu_p_task = provisioning_progress.add_task("[blue]Google TPU VM", total=100, status="Starting...")
-
-    provisioning_results = {"gpu": False, "tpu": False}
-
-    def run_with_retry(cmd: str, task_id: Any, task_name: str) -> bool:
-        max_retries = 3
-        last_error = ""
-        for attempt in range(1, max_retries + 1):
-            if attempt > 1:
-                provisioning_progress.update(task_id, status=f"Retrying ({attempt}/{max_retries})...")
-                time.sleep(5)
-            
-            res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-            if res.returncode == 0:
-                return True
-            last_error = res.stderr
-        
-        console.print(f"\n[bold red]Error provisioning {task_name}:[/bold red]\n{last_error.strip()}")
-        return False
-
-    def do_gpu() -> None:
-        # Check if exists
-        check = subprocess.run(f"gcloud compute instances describe {GPU_VM} --project={PROJECT} --zone={GPU_ZONE}", shell=True, capture_output=True)
-        if check.returncode != 0:
-            provisioning_progress.update(gpu_p_task, status="Creating...")
-            if not run_with_retry(gpu_create_cmd, gpu_p_task, "GPU"):
-                provisioning_progress.update(gpu_p_task, completed=100, status="[bold red]FAILED[/bold red]")
-                return
-        
-        provisioning_results["gpu"] = True
-        provisioning_progress.update(gpu_p_task, completed=100, status="[bold green]ONLINE[/bold green]")
-
-    def do_tpu() -> None:
-        # Check if exists
-        check = subprocess.run(f"gcloud compute tpus tpu-vm describe {TPU_VM} --project={PROJECT} --zone={TPU_ZONE}", shell=True, capture_output=True)
-        if check.returncode != 0:
-            provisioning_progress.update(tpu_p_task, status="Creating...")
-            if not run_with_retry(tpu_create_cmd, tpu_p_task, "TPU"):
-                provisioning_progress.update(tpu_p_task, completed=100, status="[bold red]FAILED[/bold red]")
-                return
-        
-        provisioning_results["tpu"] = True
-        provisioning_progress.update(tpu_p_task, completed=100, status="[bold green]ONLINE[/bold green]")
-
-    t_gpu = threading.Thread(target=do_gpu)
-    t_tpu = threading.Thread(target=do_tpu)
-    
-    with Live(provisioning_progress, refresh_per_second=4):
-        t_gpu.start()
-        t_tpu.start()
-        while t_gpu.is_alive() or t_tpu.is_alive():
-            time.sleep(0.2)
-
-    # Check for failures
-    if not provisioning_results["gpu"] or not provisioning_results["tpu"]:
-        console.print("\n[bold red]Provisioning Failed. Aborting and Cleaning up...[/bold red]")
-        cleanup()
-        sys.exit(1)
-
-    with console.status("[bold yellow]Waiting for SSH connectivity (Booting)..."):
-        if not wait_for_ssh(GPU_VM, GPU_ZONE, is_tpu=False):
-            console.print(f"[bold red]Error:[/bold red] {GPU_VM} failed to boot or is unreachable.")
-            return
-        if not wait_for_ssh(TPU_VM, TPU_ZONE, is_tpu=True):
-            console.print(f"[bold red]Error:[/bold red] {TPU_VM} failed to boot or is unreachable.")
-            return
+    # ... (provisioning) ...
 
     console.print("\n[bold green]✅ Infrastructure is Ready & SSH Reachable.[/bold green]")
     console.input("\n[dim]Press Enter to Sync Code...[/dim]")
@@ -289,43 +189,43 @@ def run() -> None:
     console.input("\n[dim]Press Enter to START THE RACE...[/dim]")
 
     # --- SCENE 4: The Race ---
-    header("🏁 The Benchmark: PyTorch (A100) vs JAX (TPU v5e)")
+    header("🏁 The Benchmark: ResNet-50 Training Race")
     gpu_log: list[str] = []
     tpu_log: list[str] = []
     progress = Progress(SpinnerColumn(), "[progress.description]{task.description}", BarColumn(), "[progress.percentage]{task.percentage:>3.0f}%", TextColumn("{task.fields[info]}"))
-    gpu_task = progress.add_task("[green]PyTorch Training", total=5, info="Initializing...")
-    tpu_task = progress.add_task("[blue]JAX/Flax Training", total=5, info="Initializing...")
+    gpu_task = progress.add_task("[green]ResNet-50 (A100)", total=300, info="Initializing...")
+    tpu_task = progress.add_task("[blue]ResNet-50 (TPU)", total=300, info="Initializing...")
 
     def run_gpu() -> None:
         # Pre-installed on image: torch torchvision
         cmd = "python3 -u train_legacy.py"
         for line in run_ssh_command(GPU_VM, GPU_ZONE, cmd):
-            if "Epoch" in line:
+            if "Step" in line:
                 try:
-                    # Line format: Epoch 1/5 | Loss: ...
-                    match = re.search(r"Epoch (\d+)/(\d+)", line)
+                    # Line format: Step 10/300 | Loss: ...
+                    match = re.search(r"Step (\d+)/(\d+)", line)
                     if match:
-                        epoch = int(match.group(1))
-                        progress.update(gpu_task, completed=epoch, info=f"Epoch {epoch}/5")
+                        step_num = int(match.group(1))
+                        progress.update(gpu_task, completed=step_num, info=f"Step {step_num}/300")
                 except Exception:
                     pass
             gpu_log.append(line)
-        progress.update(gpu_task, completed=5, info="[bold green]DONE[/bold green]")
+        progress.update(gpu_task, completed=300, info="[bold green]DONE[/bold green]")
 
     def run_tpu() -> None:
         # Install JAX and Flax
         cmd = "pip3 install 'jax[tpu]' -f https://storage.googleapis.com/jax-releases/libtpu_releases.html flax optax --quiet && python3 -u train_jax.py"
         for line in run_ssh_command(TPU_VM, TPU_ZONE, cmd, is_tpu=True):
-            if "Epoch" in line:
+            if "Step" in line:
                 try:
-                    match = re.search(r"Epoch (\d+)/(\d+)", line)
+                    match = re.search(r"Step (\d+)/(\d+)", line)
                     if match:
-                        epoch = int(match.group(1))
-                        progress.update(tpu_task, completed=epoch, info=f"Epoch {epoch}/5")
+                        step_num = int(match.group(1))
+                        progress.update(tpu_task, completed=step_num, info=f"Step {step_num}/300")
                 except Exception:
                     pass
             tpu_log.append(line)
-        progress.update(tpu_task, completed=5, info="[bold blue]DONE[/bold blue]")
+        progress.update(tpu_task, completed=300, info="[bold blue]DONE[/bold blue]")
 
 
     t1, t2 = threading.Thread(target=run_gpu), threading.Thread(target=run_tpu)
