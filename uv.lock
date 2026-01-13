@@ -17,7 +17,7 @@ wheels = [
 
 [[package]]
 name = "demo-cuda-to-tpu"
-version = "0.3.6"
+version = "0.3.7"
 source = { editable = "." }
 dependencies = [
     { name = "rich" },
