@@ -5,7 +5,7 @@ import re
 import threading
 import sys
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Generator, Optional, Any
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -131,7 +131,7 @@ def cleanup() -> None:
     console.print("\n[bold green]✨ Cleanup Complete.[/bold green]")
 
 def main() -> None:
-    print("ursa-major-demo-cuda-to-tpu v0.1.9")
+    print("ursa-major-demo-cuda-to-tpu v0.1.10")
     if "--version" in sys.argv:
         return
 
@@ -195,15 +195,30 @@ def main() -> None:
     gpu_p_task = provisioning_progress.add_task("[green]Nvidia A100 VM", total=100, status="Starting...")
     tpu_p_task = provisioning_progress.add_task("[blue]Google TPU VM", total=100, status="Starting...")
 
+    provisioning_results = {"gpu": False, "tpu": False}
+
+    def run_with_retry(cmd: str, task_id: Any, task_name: str) -> bool:
+        max_retries = 3
+        for attempt in range(1, max_retries + 1):
+            if attempt > 1:
+                provisioning_progress.update(task_id, status=f"Retrying ({attempt}/{max_retries})...")
+                time.sleep(5)
+            
+            res = subprocess.run(cmd, shell=True, capture_output=True)
+            if res.returncode == 0:
+                return True
+        return False
+
     def do_gpu() -> None:
         # Check if exists
         check = subprocess.run(f"gcloud compute instances describe {GPU_VM} --project={PROJECT} --zone={GPU_ZONE}", shell=True, capture_output=True)
         if check.returncode != 0:
             provisioning_progress.update(gpu_p_task, status="Creating...")
-            res = subprocess.run(gpu_create_cmd, shell=True, capture_output=True)
-            if res.returncode != 0:
+            if not run_with_retry(gpu_create_cmd, gpu_p_task, "GPU"):
                 provisioning_progress.update(gpu_p_task, completed=100, status="[bold red]FAILED[/bold red]")
                 return
+        
+        provisioning_results["gpu"] = True
         provisioning_progress.update(gpu_p_task, completed=100, status="[bold green]ONLINE[/bold green]")
 
     def do_tpu() -> None:
@@ -211,10 +226,11 @@ def main() -> None:
         check = subprocess.run(f"gcloud compute tpus tpu-vm describe {TPU_VM} --project={PROJECT} --zone={TPU_ZONE}", shell=True, capture_output=True)
         if check.returncode != 0:
             provisioning_progress.update(tpu_p_task, status="Creating...")
-            res = subprocess.run(tpu_create_cmd, shell=True, capture_output=True)
-            if res.returncode != 0:
+            if not run_with_retry(tpu_create_cmd, tpu_p_task, "TPU"):
                 provisioning_progress.update(tpu_p_task, completed=100, status="[bold red]FAILED[/bold red]")
                 return
+        
+        provisioning_results["tpu"] = True
         provisioning_progress.update(tpu_p_task, completed=100, status="[bold green]ONLINE[/bold green]")
 
     t_gpu = threading.Thread(target=do_gpu)
@@ -225,6 +241,12 @@ def main() -> None:
         t_tpu.start()
         while t_gpu.is_alive() or t_tpu.is_alive():
             time.sleep(0.2)
+
+    # Check for failures
+    if not provisioning_results["gpu"] or not provisioning_results["tpu"]:
+        console.print("\n[bold red]Provisioning Failed. Aborting and Cleaning up...[/bold red]")
+        cleanup()
+        sys.exit(1)
 
     with console.status("[bold yellow]Waiting for SSH connectivity (Booting)..."):
         if not wait_for_ssh(GPU_VM, GPU_ZONE, is_tpu=False):
