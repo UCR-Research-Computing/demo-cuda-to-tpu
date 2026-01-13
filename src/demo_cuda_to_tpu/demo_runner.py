@@ -130,8 +130,8 @@ def cleanup() -> None:
     t2.join()
     console.print("\n[bold green]✨ Cleanup Complete.[/bold green]")
 
-def main() -> None:
-    print("ursa-major-demo-cuda-to-tpu v0.1.10")
+def run() -> None:
+    print("ursa-major-demo-cuda-to-tpu v0.1.11")
     if "--version" in sys.argv:
         return
 
@@ -331,10 +331,13 @@ def main() -> None:
     console.input("\n[bold red]Press Enter to DESTROY Cloud Resources...[/bold red]")
     cleanup()
 
-if __name__ == "__main__":
+def main() -> None:
     try:
-        main()
+        run()
     except KeyboardInterrupt:
         console.print("\n[bold red]Interrupted by User.[/bold red]")
         cleanup()
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()
