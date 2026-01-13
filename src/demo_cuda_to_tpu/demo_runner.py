@@ -131,7 +131,7 @@ def cleanup() -> None:
     console.print("\n[bold green]✨ Cleanup Complete.[/bold green]")
 
 def main() -> None:
-    print("ursa-major-demo-cuda-to-tpu v0.1.7")
+    print("ursa-major-demo-cuda-to-tpu v0.1.8")
     if "--version" in sys.argv:
         return
 
@@ -280,7 +280,8 @@ def main() -> None:
         progress.update(gpu_task, completed=10000, info="[bold green]DONE[/bold green]")
 
     def run_tpu() -> None:
-        cmd = "python3 -u nbody_jax.py --n 16384 --iter 10000"
+        # Ensure JAX is installed for TPU
+        cmd = "pip3 install 'jax[tpu]' -f https://storage.googleapis.com/jax-releases/libtpu_releases.html --quiet && python3 -u nbody_jax.py --n 16384 --iter 10000"
         for line in run_ssh_command(TPU_VM, TPU_ZONE, cmd, is_tpu=True):
             if "Iteration" in line:
                 try:
