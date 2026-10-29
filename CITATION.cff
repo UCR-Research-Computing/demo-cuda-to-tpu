@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "CUDA to TPU: an accelerator porting demonstration"
+type: software
+authors:
+  - family-names: "Forsyth III"
+    given-names: "Charles E."
+    orcid: "https://orcid.org/0000-0003-4872-0296"
+    affiliation: "University of California, Riverside"
+  - name: "UCR Research Computing"
+repository-code: "https://github.com/UCR-Research-Computing/demo-cuda-to-tpu"
+license: MIT
+keywords:
+  - "TPU"
+  - "CUDA"
+  - "JAX"
+  - "accelerators"
